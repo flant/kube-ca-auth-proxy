@@ -1,0 +1,106 @@
+#!/bin/sh -e
+
+HELP_STRING=$(cat <<"EOF"
+Usage: run-proxy --listen $MY_POD_IP:9090 --proxy-pass http://127.0.0.1
+
+Arguments:
+  --listen [ADDRESS:]PORT            sets the address and port on which the server will accept requests
+  --proxy-pass URL                   sets the url to proxy to
+  --location URI                     sets the uri for the location (default: /metrics)
+  -h, --help                         output this message
+EOF
+)
+
+if ! temp=$(getopt -o h --long listen:,proxy-pass:,location:,help -n 'run-proxy' -- "$@") ; then
+  >&2 echo
+  >&2 echo "$HELP_STRING"
+  exit 1
+fi
+
+eval set -- "$temp"
+
+LOCATION=/metrics
+
+while true; do
+  case "$1" in
+    --listen )
+      LISTEN=$2; shift 2;;
+    --proxy-pass )
+      PROXY_PASS=$2; shift 2;;
+    --location )
+      LOCATION=$2; shift 2;;
+    -h | --help )
+      echo "$HELP_STRING"; exit 0 ;;
+    -- )
+      shift; break ;;
+    * )
+      break ;;
+  esac
+done
+
+if [[ -z $LISTEN ]] ; then
+  >&2 echo "--listen is required"
+  >&2 echo
+  >&2 echo "$HELP_STRING"
+  exit 1
+fi
+
+if [[ -z $PROXY_PASS ]] ; then
+  >&2 echo "--proxy-pass is required"
+  >&2 echo
+  >&2 echo "$HELP_STRING"
+  exit 1
+fi
+
+cat > /etc/nginx/nginx.conf <<EOF
+user nginx;
+worker_processes 1;
+error_log /dev/stderr warn;
+
+
+events {
+  worker_connections 100;
+}
+
+http {
+  access_log off;
+
+  server {
+    server_name ${HOSTNAME};
+    listen ${LISTEN} ssl;
+
+
+    ssl_protocols       TLSv1.2;
+    ssl_certificate     /etc/nginx/server.crt;
+    ssl_certificate_key /etc/nginx/server.key;
+
+    ssl_client_certificate /var/run/secrets/kubernetes.io/serviceaccount/ca.crt;
+    ssl_verify_client on;
+
+    location ${LOCATION} {
+      if (\$ssl_client_s_dn != "CN=kube-prometheus") {
+        return 403;
+      }
+
+      proxy_pass ${PROXY_PASS};
+    }
+  }
+}
+EOF
+
+# Generate self-signed certificate
+openssl genrsa -des3 -passout pass:x -out /etc/nginx/server.pass.key 2048
+openssl rsa -passin pass:x -in /etc/nginx/server.pass.key -out /etc/nginx/server.key
+openssl req -new -key /etc/nginx/server.key -out /etc/nginx/server.csr -subj "/CN=$HOSTNAME"
+openssl x509 -req -sha256 -days 300065 -in /etc/nginx/server.csr -signkey /etc/nginx/server.key -out /etc/nginx/server.crt
+rm /etc/nginx/server.pass.key /etc/nginx/server.csr
+
+# Check Nginx config (and exit on error)
+if ! nginx -t ; then
+  >&2 echo
+  >&2 cat /etc/nginx/nginx.conf
+  exit 1
+fi
+
+# Run nginx
+exec nginx -g 'daemon off;'
