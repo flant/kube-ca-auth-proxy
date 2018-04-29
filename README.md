@@ -1,0 +1,1 @@
+# kube-prometheus-auth-proxy
