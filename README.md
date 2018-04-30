@@ -7,7 +7,7 @@ spec:
     spec:
       containers:
       - name: prometheus-auth-proxy
-        image: flant/kube-prometheus-auth-proxy:v0.0.1
+        image: flant/kube-prometheus-auth-proxy:v0.1.0
         args:
         - "--listen=9000"
         - "--proxy-pass=http://localhost:9001/"
@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: prometheus-auth-proxy
-        image: flant/kube-prometheus-auth-proxy:v0.0.1
+        image: flant/kube-prometheus-auth-proxy:v0.1.0
         args:
         - "--listen=$(MY_POD_IP):9000"
         - "--proxy-pass=http://localhost:9001/"
