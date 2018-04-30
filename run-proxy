@@ -6,12 +6,13 @@ Usage: run-proxy --listen $MY_POD_IP:9090 --proxy-pass http://127.0.0.1
 Arguments:
   --listen [ADDRESS:]PORT            sets the address and port on which the server will accept requests
   --proxy-pass URL                   sets the url to proxy to
+  --user USER                        sets the name of the authorized user (default: kube-prometheus:scraper)
   --location URI                     sets the uri for the location (default: /metrics)
   -h, --help                         output this message
 EOF
 )
 
-if ! temp=$(getopt -o h --long listen:,proxy-pass:,location:,help -n 'run-proxy' -- "$@") ; then
+if ! temp=$(getopt -o h --long listen:,proxy-pass:,user:,location:,help -n 'run-proxy' -- "$@") ; then
   >&2 echo
   >&2 echo "$HELP_STRING"
   exit 1
@@ -19,6 +20,7 @@ fi
 
 eval set -- "$temp"
 
+USER=kube-prometheus:scraper
 LOCATION=/metrics
 
 while true; do
@@ -27,6 +29,8 @@ while true; do
       LISTEN=$2; shift 2;;
     --proxy-pass )
       PROXY_PASS=$2; shift 2;;
+    --user )
+      USER=$2; shift 2;;
     --location )
       LOCATION=$2; shift 2;;
     -h | --help )
@@ -65,6 +69,11 @@ events {
 http {
   access_log off;
 
+  map  \$ssl_client_s_dn  \$ssl_client_s_dn_cn {
+    default "";
+    ~CN=(?<CN>[^,]+) \$CN;
+  }
+
   server {
     server_name ${HOSTNAME};
     listen ${LISTEN} ssl;
@@ -78,7 +87,7 @@ http {
     ssl_verify_client on;
 
     location ${LOCATION} {
-      if (\$ssl_client_s_dn != "CN=kube-prometheus") {
+      if (\$ssl_client_s_dn_cn != "${USER}") {
         return 403;
       }
 
