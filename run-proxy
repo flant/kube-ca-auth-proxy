@@ -69,7 +69,7 @@ fi
 
 if [ -n "$PROXY_SSL_CA" ]; then
   PROXY_SSL_VERIFY="$(cat <<EOF | sed 's/^ */      /g'
-    proxy_ssl_verify yes;
+    proxy_ssl_verify on;
     proxy_ssl_trusted_certificate $PROXY_SSL_CA;
 EOF
   )"
