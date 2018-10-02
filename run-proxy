@@ -8,16 +8,19 @@ Arguments:
   --proxy-pass URL                   sets the url to proxy to
   --user USER                        sets the name of the authorized user (default: kube-prometheus:scraper)
   --location URI                     sets the uri for the location (default: /metrics)
-  --proxy-ssl-ca-file path           specify path to CA file in PEM format used to verify peer certificate,
+  --proxy-ssl-ca-file PATH           specify path to CA file in PEM format used to verify peer certificate,
                                      implies "proxy_ssl_verify on;"
-  --proxy-ssl-cert-file path         specify path to cert file in PEM format used to authenticate to peer
-  --proxy-ssl-key-file path          specify path to key file in PEM format used to authenticate to peer
+  --proxy-ssl-cert-file PATH         specify path to cert file in PEM format used to authenticate to peer
+  --proxy-ssl-key-file PATH          specify path to key file in PEM format used to authenticate to peer
+  --proxy-ssl-name NAME              specify custom CN to use, when verifiying remote certificate,
+                                     this option should only be used CN in the remote certificate
+                                     differs from the host in "--proxy-pass" URL
   -h, --help                         output this message
 EOF
 )
 
 if ! temp=$(getopt -o h --long "listen:,proxy-pass:,user:,location:,help,proxy-ssl-ca-file:,
-            proxy-ssl-cert-file:,proxy-ssl-key-file:" -n 'run-proxy' -- "$@") ; then
+            proxy-ssl-cert-file:,proxy-ssl-key-file:,proxy-ssl-name:" -n 'run-proxy' -- "$@") ; then
   >&2 echo
   >&2 echo "$HELP_STRING"
   exit 1
@@ -44,6 +47,8 @@ while true; do
       PROXY_SSL_CERT=$2; shift 2;;
     --proxy-ssl-key-file )
       PROXY_SSL_KEY=$2; shift 2;;
+    --proxy-ssl-name )
+      PROXY_SSL_NAME=$2; shift 2;;
     -h | --help )
       echo "$HELP_STRING"; exit 0 ;;
     -- )
@@ -95,6 +100,13 @@ if [ -n "$PROXY_SSL_KEY" ] || [ -n "$PROXY_SSL_CERT" ]; then
     proxy_ssl_certificate $PROXY_SSL_CERT;
 EOF
   )"
+
+  if [ -n "$PROXY_SSL_NAME" ]; then
+    PROXY_SSL_NAME="$(cat <<EOF | sed 's/^ */      /g'
+      proxy_ssl_name $PROXY_SSL_NAME;
+EOF
+    )"
+  fi
 fi
 
 cat > /etc/nginx/nginx.conf <<EOF
@@ -135,6 +147,7 @@ http {
       proxy_pass ${PROXY_PASS};
 ${PROXY_SSL_CONFIG}
 ${PROXY_SSL_VERIFY}
+${PROXY_SSL_NAME}
     }
   }
 }
