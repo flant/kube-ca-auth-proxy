@@ -15,12 +15,13 @@ Arguments:
   --proxy-ssl-name NAME              specify custom CN to use, when verifiying remote certificate,
                                      this option should only be used CN in the remote certificate
                                      differs from the host in "--proxy-pass" URL
+  --debug                            enable nginx debug log output
   -h, --help                         output this message
 EOF
 )
 
 if ! temp=$(getopt -o h --long "listen:,proxy-pass:,user:,location:,help,proxy-ssl-ca-file:,
-            proxy-ssl-cert-file:,proxy-ssl-key-file:,proxy-ssl-name:" -n 'run-proxy' -- "$@") ; then
+            proxy-ssl-cert-file:,proxy-ssl-key-file:,proxy-ssl-name:,debug" -n 'run-proxy' -- "$@") ; then
   >&2 echo
   >&2 echo "$HELP_STRING"
   exit 1
@@ -30,6 +31,8 @@ eval set -- "$temp"
 
 USER=kube-prometheus:scraper
 LOCATION=/metrics
+NGINX_BINARY_NAME=nginx
+ERROR_LOG_LEVEL=warn
 
 while true; do
   case "$1" in
@@ -49,6 +52,8 @@ while true; do
       PROXY_SSL_KEY=$2; shift 2;;
     --proxy-ssl-name )
       PROXY_SSL_NAME=$2; shift 2;;
+    --debug )
+      DEBUG=yes; shift 1;;
     -h | --help )
       echo "$HELP_STRING"; exit 0 ;;
     -- )
@@ -109,10 +114,15 @@ EOF
   fi
 fi
 
+if [ x"$DEBUG" = x"yes" ]; then
+  NGINX_BINARY_NAME=nginx-debug
+  ERROR_LOG_LEVEL=debug
+fi
+
 cat > /etc/nginx/nginx.conf <<EOF
 user nginx;
 worker_processes 1;
-error_log /dev/stderr warn;
+error_log /dev/stderr ${ERROR_LOG_LEVEL};
 
 
 events {
@@ -168,4 +178,4 @@ if ! nginx -t ; then
 fi
 
 # Run nginx
-exec nginx -g 'daemon off;'
+exec "$NGINX_BINARY_NAME" -g 'daemon off;'
