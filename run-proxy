@@ -78,13 +78,8 @@ if [[ -z $PROXY_PASS ]] ; then
 fi
 
 if [ -n "$PROXY_SSL_CA" ]; then
-  if [[ $PROXY_PASS =~ ^.*127\.0\.0\.1|localhost.*$ ]]; then
-    LOCALHOST_PROXY_SSL_VERIFY="off"
-  else
-    LOCALHOST_PROXY_SSL_VERIFY="on"
-  fi
   PROXY_SSL_VERIFY="$(cat <<EOF | sed 's/^ */      /g'
-    proxy_ssl_verify $LOCALHOST_PROXY_SSL_VERIFY;
+    proxy_ssl_verify on;
     proxy_ssl_trusted_certificate $PROXY_SSL_CA;
 EOF
   )"
