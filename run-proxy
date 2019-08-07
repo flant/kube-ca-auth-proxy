@@ -156,7 +156,7 @@ http {
     ssl_verify_client on;
 
     location ${LOCATION} {
-      if (\$ssl_client_s_dn_cn != "${USER}") {
+      if (\$ssl_client_s_dn_cn !~ "${USER}") {
         return 403;
       }
 
