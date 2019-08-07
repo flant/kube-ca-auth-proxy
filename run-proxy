@@ -6,7 +6,7 @@ Usage: run-proxy --listen $MY_POD_IP:9090 --proxy-pass http://127.0.0.1
 Arguments:
   --listen [ADDRESS:]PORT            sets the address and port on which the server will accept requests
   --proxy-pass URL                   sets the url to proxy to
-  --user USER                        sets the name of the authorized user (default: kube-prometheus:scraper)
+  --user USER                        sets the name of the authorized user
   --location URI                     sets the uri for the location (default: /metrics)
   --proxy-ssl-ca-file PATH           specify path to CA file in PEM format used to verify peer certificate,
                                      implies "proxy_ssl_verify on;"
@@ -29,7 +29,6 @@ fi
 
 eval set -- "$temp"
 
-USER=kube-prometheus:scraper
 LOCATION=/metrics
 NGINX_BINARY_NAME=nginx
 ERROR_LOG_LEVEL=warn
@@ -72,6 +71,13 @@ fi
 
 if [[ -z $PROXY_PASS ]] ; then
   >&2 echo "--proxy-pass is required"
+  >&2 echo
+  >&2 echo "$HELP_STRING"
+  exit 1
+fi
+
+if [[ -z $USER ]] ; then
+  >&2 echo "--user is required"
   >&2 echo
   >&2 echo "$HELP_STRING"
   exit 1

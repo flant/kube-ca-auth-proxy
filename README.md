@@ -1,4 +1,4 @@
-# kube-prometheus-auth-proxy
+# kube-ca-auth-proxy
 
 Example:
 ```
@@ -6,8 +6,8 @@ spec:
   template:
     spec:
       containers:
-      - name: prometheus-auth-proxy
-        image: flant/kube-prometheus-auth-proxy:v0.1.0
+      - name: ca-auth-proxy
+        image: flant/kube-ca-auth-proxy:v0.1.0
         args:
         - "--listen=9000"
         - "--proxy-pass=http://localhost:9001/metrics"
@@ -19,8 +19,8 @@ spec:
   template:
     spec:
       containers:
-      - name: prometheus-auth-proxy
-        image: flant/kube-prometheus-auth-proxy:v0.1.0
+      - name: ca-auth-proxy
+        image: flant/kube-ca-auth-proxy:v0.1.0
         args:
         - "--listen=$(MY_POD_IP):9000"
         - "--proxy-pass=http://localhost:9001/metrics"
