@@ -10,6 +10,8 @@ Arguments:
   --location URI                     sets the uri for the location (default: /metrics)
   --proxy-ssl-ca-file PATH           specify path to CA file in PEM format used to verify peer certificate,
                                      implies "proxy_ssl_verify on;"
+  --probe-proxy-pass URL             sets the probe url to proxy to
+  --probe-listen [ADDRESS:]PORT      sets the address and port on which the server will accept request for probe
   --proxy-ssl-cert-file PATH         specify path to cert file in PEM format used to authenticate to peer
   --proxy-ssl-key-file PATH          specify path to key file in PEM format used to authenticate to peer
   --proxy-ssl-name NAME              specify custom CN to use, when verifiying remote certificate,
@@ -21,7 +23,7 @@ EOF
 )
 
 if ! temp=$(getopt -o h --long "listen:,proxy-pass:,user:,location:,help,proxy-ssl-ca-file:,
-            proxy-ssl-cert-file:,proxy-ssl-key-file:,proxy-ssl-name:,debug" -n 'run-proxy' -- "$@") ; then
+            proxy-ssl-cert-file:,proxy-ssl-key-file:,proxy-ssl-name:,probe-proxy-pass:,probe-listen:,debug" -n 'run-proxy' -- "$@") ; then
   >&2 echo
   >&2 echo "$HELP_STRING"
   exit 1
@@ -51,6 +53,10 @@ while true; do
       PROXY_SSL_KEY=$2; shift 2;;
     --proxy-ssl-name )
       PROXY_SSL_NAME=$2; shift 2;;
+    --probe-proxy-pass )
+      PROBE_PROXY_PASS=$2; shift 2;;
+    --probe-listen )
+      PROBE_LISTEN=$2; shift 2;;
     --debug )
       DEBUG=yes; shift 1;;
     -h | --help )
@@ -120,6 +126,34 @@ EOF
   fi
 fi
 
+if [ -n "$PROBE_PROXY_PASS" ] || [ -n "$PROBE_LISTEN" ]; then
+  if [ -z "$PROBE_PROXY_PASS" ] ; then
+    >&2 echo "--probe-proxy-pass is required when --probe-listen is specified"
+    >&2 echo
+    >&2 echo "$HELP_STRING"
+    exit 1
+  fi
+
+  if [ -z "$PROBE_LISTEN" ] ; then
+    >&2 echo "--probe-listen is required when --probe-proxy-pass is specified"
+    >&2 echo
+    >&2 echo "$HELP_STRING"
+    exit 1
+  fi
+
+  PROBE_CONFIG="$(cat <<EOF
+  server {
+    server_name ${HOSTNAME};
+    listen ${PROBE_LISTEN};
+
+    location / {
+      proxy_pass ${PROBE_PROXY_PASS};
+    }
+  }
+EOF
+)"
+fi
+
 if [ x"$DEBUG" = x"yes" ]; then
   NGINX_BINARY_NAME=nginx-debug
   ERROR_LOG_LEVEL=debug
@@ -166,6 +200,7 @@ ${PROXY_SSL_VERIFY}
 ${PROXY_SSL_NAME}
     }
   }
+  ${PROBE_CONFIG}
 }
 EOF
 

@@ -11,6 +11,7 @@ spec:
         args:
         - "--listen=9000"
         - "--proxy-pass=http://localhost:9001/metrics"
+        - "--user=kube-prometheus:scraper"
 ```
 
 If you run your pod in hostNetwork, better listen on podIP:
@@ -24,6 +25,7 @@ spec:
         args:
         - "--listen=$(MY_POD_IP):9000"
         - "--proxy-pass=http://localhost:9001/metrics"
+        - "--user=kube-prometheus:scraper"
         env:
         - name: MY_POD_IP
           valueFrom:
