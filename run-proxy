@@ -10,7 +10,7 @@ Arguments:
   --location URI                     sets the uri for the location (default: /metrics)
   --proxy-ssl-ca-file PATH           specify path to CA file in PEM format used to verify peer certificate,
                                      implies "proxy_ssl_verify on;"
-  --probe-location URI               sets the uri for the probe location
+  --probe-proxy-pass URL             sets the probe url to proxy to
   --probe-listen [ADDRESS:]PORT      sets the address and port on which the server will accept request for probe
   --proxy-ssl-cert-file PATH         specify path to cert file in PEM format used to authenticate to peer
   --proxy-ssl-key-file PATH          specify path to key file in PEM format used to authenticate to peer
@@ -23,7 +23,7 @@ EOF
 )
 
 if ! temp=$(getopt -o h --long "listen:,proxy-pass:,user:,location:,help,proxy-ssl-ca-file:,
-            proxy-ssl-cert-file:,proxy-ssl-key-file:,proxy-ssl-name:,probe-location:,probe-listen:,debug" -n 'run-proxy' -- "$@") ; then
+            proxy-ssl-cert-file:,proxy-ssl-key-file:,proxy-ssl-name:,probe-proxy-pass:,probe-listen:,debug" -n 'run-proxy' -- "$@") ; then
   >&2 echo
   >&2 echo "$HELP_STRING"
   exit 1
@@ -53,8 +53,8 @@ while true; do
       PROXY_SSL_KEY=$2; shift 2;;
     --proxy-ssl-name )
       PROXY_SSL_NAME=$2; shift 2;;
-    --probe-location )
-      PROBE_LOCATION=$2; shift 2;;
+    --probe-proxy-pass )
+      PROBE_PROXY_PASS=$2; shift 2;;
     --probe-listen )
       PROBE_LISTEN=$2; shift 2;;
     --debug )
@@ -126,16 +126,16 @@ EOF
   fi
 fi
 
-if [ -n "$PROBE_LOCATION" ] || [ -n "$PROBE_LISTEN" ]; then
-  if [ -z "$PROBE_LOCATION" ] ; then
-    >&2 echo "--probe-location is required when --probe-listen is specified"
+if [ -n "$PROBE_PROXY_PASS" ] || [ -n "$PROBE_LISTEN" ]; then
+  if [ -z "$PROBE_PROXY_PASS" ] ; then
+    >&2 echo "--probe-proxy-pass is required when --probe-listen is specified"
     >&2 echo
     >&2 echo "$HELP_STRING"
     exit 1
   fi
 
   if [ -z "$PROBE_LISTEN" ] ; then
-    >&2 echo "--probe-listen is required when --probe-location is specified"
+    >&2 echo "--probe-listen is required when --probe-proxy-pass is specified"
     >&2 echo
     >&2 echo "$HELP_STRING"
     exit 1
@@ -146,8 +146,8 @@ if [ -n "$PROBE_LOCATION" ] || [ -n "$PROBE_LISTEN" ]; then
     server_name ${HOSTNAME};
     listen ${PROBE_LISTEN};
 
-    location ${PROBE_LOCATION} {
-      proxy_pass ${PROXY_PASS};
+    location / {
+      proxy_pass ${PROBE_PROXY_PASS};
     }
   }
 EOF
