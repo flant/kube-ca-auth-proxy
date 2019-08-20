@@ -190,10 +190,15 @@ http {
     ssl_verify_client on;
 
     location ${LOCATION} {
-      if (\$ssl_client_s_dn_cn != "${USER}") {
+      if (\$ssl_client_s_dn_cn !~ "${USER}") {
         return 403;
       }
-
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade \$http_upgrade;
+      proxy_set_header Connection "upgrade";
+      proxy_set_header Host \$host;
+      proxy_read_timeout 3600;
+      proxy_send_timeout 3600;
       proxy_pass ${PROXY_PASS};
 ${PROXY_SSL_CONFIG}
 ${PROXY_SSL_VERIFY}
