@@ -181,13 +181,14 @@ http {
     server_name ${HOSTNAME};
     listen ${LISTEN} ssl;
 
-
     ssl_protocols       TLSv1.2;
     ssl_certificate     /etc/nginx/server.crt;
     ssl_certificate_key /etc/nginx/server.key;
 
     ssl_client_certificate /var/run/secrets/kubernetes.io/serviceaccount/ca.crt;
     ssl_verify_client on;
+
+    large_client_header_buffers 4 32k;
 
     location ${LOCATION} {
       if (\$ssl_client_s_dn_cn !~ "^${USER}$") {
