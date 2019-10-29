@@ -211,8 +211,8 @@ ${PROXY_SSL_NAME}
 EOF
 
 # Generate self-signed certificate
-openssl genrsa -des3 -passout pass:x -out /etc/nginx/server.pass.key 2048
-openssl rsa -passin pass:gsahdg -in /etc/nginx/server.pass.key -out /etc/nginx/server.key
+openssl genrsa -des3 -passout pass:xxxx -out /etc/nginx/server.pass.key 2048
+openssl rsa -passin pass:xxxx -in /etc/nginx/server.pass.key -out /etc/nginx/server.key
 openssl req -new -key /etc/nginx/server.key -out /etc/nginx/server.csr -subj "/CN=$HOSTNAME"
 openssl x509 -req -sha256 -days 300065 -in /etc/nginx/server.csr -signkey /etc/nginx/server.key -out /etc/nginx/server.crt
 rm /etc/nginx/server.pass.key /etc/nginx/server.csr
