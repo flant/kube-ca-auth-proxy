@@ -7,6 +7,7 @@ Arguments:
   --listen [ADDRESS:]PORT            sets the address and port on which the server will accept requests
   --proxy-pass URL                   sets the url to proxy to
   --user USER                        sets the name of the authorized user
+  --nginx-user                       sets the user to run nginx
   --location URI                     sets the uri for the location (default: /metrics)
   --proxy-ssl-ca-file PATH           specify path to CA file in PEM format used to verify peer certificate,
                                      implies "proxy_ssl_verify on;"
@@ -34,6 +35,7 @@ eval set -- "$temp"
 LOCATION=/metrics
 NGINX_BINARY_NAME=nginx
 ERROR_LOG_LEVEL=warn
+NGINX_USER=nginx
 
 while true; do
   case "$1" in
@@ -43,6 +45,8 @@ while true; do
       PROXY_PASS=$2; shift 2;;
     --user )
       USER=$2; shift 2;;
+    --nginx-user )
+      NGINX_USER=$2; shift 2;;
     --location )
       LOCATION=$2; shift 2;;
     --proxy-ssl-ca-file )
@@ -68,28 +72,28 @@ while true; do
   esac
 done
 
-if [[ -z $LISTEN ]] ; then
+if [[ -z "$LISTEN" ]] ; then
   >&2 echo "--listen is required"
   >&2 echo
   >&2 echo "$HELP_STRING"
   exit 1
 fi
 
-if [[ -z $PROXY_PASS ]] ; then
+if [[ -z "$PROXY_PASS" ]] ; then
   >&2 echo "--proxy-pass is required"
   >&2 echo
   >&2 echo "$HELP_STRING"
   exit 1
 fi
 
-if [[ -z $USER ]] ; then
+if [[ -z "$USER" ]] ; then
   >&2 echo "--user is required"
   >&2 echo
   >&2 echo "$HELP_STRING"
   exit 1
 fi
 
-if [ -n "$PROXY_SSL_CA" ]; then
+if [[ -n "$PROXY_SSL_CA" ]]; then
   PROXY_SSL_VERIFY="$(cat <<EOF | sed 's/^ */      /g'
     proxy_ssl_verify on;
     proxy_ssl_trusted_certificate $PROXY_SSL_CA;
@@ -97,15 +101,15 @@ EOF
   )"
 fi
 
-if [ -n "$PROXY_SSL_KEY" ] || [ -n "$PROXY_SSL_CERT" ]; then
-  if [ -z "$PROXY_SSL_KEY" ] ; then
+if [[ -n "$PROXY_SSL_KEY" ]] || [[ -n "$PROXY_SSL_CERT" ]]; then
+  if [[ -z "$PROXY_SSL_KEY" ]]; then
     >&2 echo "--proxy-ssl-key-file is required when --proxy-ssl-cert-file is specified"
     >&2 echo
     >&2 echo "$HELP_STRING"
     exit 1
   fi
 
-  if [ -z "$PROXY_SSL_CERT" ] ; then
+  if [[ -z "$PROXY_SSL_CERT" ]]; then
     >&2 echo "--proxy-ssl-cert-file is required when --proxy-ssl-key-file is specified"
     >&2 echo
     >&2 echo "$HELP_STRING"
@@ -118,7 +122,7 @@ if [ -n "$PROXY_SSL_KEY" ] || [ -n "$PROXY_SSL_CERT" ]; then
 EOF
   )"
 
-  if [ -n "$PROXY_SSL_NAME" ]; then
+  if [[ -n "$PROXY_SSL_NAME" ]]; then
     PROXY_SSL_NAME="$(cat <<EOF | sed 's/^ */      /g'
       proxy_ssl_name $PROXY_SSL_NAME;
 EOF
@@ -126,15 +130,15 @@ EOF
   fi
 fi
 
-if [ -n "$PROBE_PROXY_PASS" ] || [ -n "$PROBE_LISTEN" ]; then
-  if [ -z "$PROBE_PROXY_PASS" ] ; then
+if [[ -n "$PROBE_PROXY_PASS" ]] || [[ -n "$PROBE_LISTEN" ]]; then
+  if [[ -z "$PROBE_PROXY_PASS" ]]; then
     >&2 echo "--probe-proxy-pass is required when --probe-listen is specified"
     >&2 echo
     >&2 echo "$HELP_STRING"
     exit 1
   fi
 
-  if [ -z "$PROBE_LISTEN" ] ; then
+  if [[ -z "$PROBE_LISTEN" ]]; then
     >&2 echo "--probe-listen is required when --probe-proxy-pass is specified"
     >&2 echo
     >&2 echo "$HELP_STRING"
@@ -154,13 +158,13 @@ EOF
 )"
 fi
 
-if [ x"$DEBUG" = x"yes" ]; then
+if [[ x"$DEBUG" = x"yes" ]]; then
   NGINX_BINARY_NAME=nginx-debug
   ERROR_LOG_LEVEL=debug
 fi
 
 cat > /etc/nginx/nginx.conf <<EOF
-user nginx;
+user ${NGINX_USER};
 worker_processes 1;
 error_log /dev/stderr ${ERROR_LOG_LEVEL};
 
