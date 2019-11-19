@@ -7,7 +7,7 @@ Arguments:
   --listen [ADDRESS:]PORT            sets the address and port on which the server will accept requests
   --proxy-pass URL                   sets the url to proxy to
   --user USER                        sets the name of the authorized user
-  --nginx-user                       sets the user to run nginx
+  --nginx-user USER                  sets the user to run nginx
   --location URI                     sets the uri for the location (default: /metrics)
   --proxy-ssl-ca-file PATH           specify path to CA file in PEM format used to verify peer certificate,
                                      implies "proxy_ssl_verify on;"
@@ -23,7 +23,7 @@ Arguments:
 EOF
 )
 
-if ! temp=$(getopt -o h --long "listen:,proxy-pass:,user:,location:,help,proxy-ssl-ca-file:,
+if ! temp=$(getopt -o h --long "listen:,proxy-pass:,user:,nginx-user:,location:,help,proxy-ssl-ca-file:,
             proxy-ssl-cert-file:,proxy-ssl-key-file:,proxy-ssl-name:,probe-proxy-pass:,probe-listen:,debug" -n 'run-proxy' -- "$@") ; then
   >&2 echo
   >&2 echo "$HELP_STRING"
