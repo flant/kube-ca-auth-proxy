@@ -4,27 +4,28 @@ HELP_STRING=$(cat <<"EOF"
 Usage: run-proxy --listen $MY_POD_IP:9090 --proxy-pass http://127.0.0.1
 
 Arguments:
-  --listen [ADDRESS:]PORT            sets the address and port on which the server will accept requests
-  --proxy-pass URL                   sets the url to proxy to
-  --user USER                        sets the name of the authorized user
-  --nginx-user USER                  sets the user to run nginx
-  --location URI                     sets the uri for the location (default: /metrics)
-  --proxy-ssl-ca-file PATH           specify path to CA file in PEM format used to verify peer certificate,
-                                     implies "proxy_ssl_verify on;"
-  --probe-proxy-pass URL             sets the probe url to proxy to
-  --probe-listen [ADDRESS:]PORT      sets the address and port on which the server will accept request for probe
-  --proxy-ssl-cert-file PATH         specify path to cert file in PEM format used to authenticate to peer
-  --proxy-ssl-key-file PATH          specify path to key file in PEM format used to authenticate to peer
-  --proxy-ssl-name NAME              specify custom CN to use, when verifiying remote certificate,
-                                     this option should only be used CN in the remote certificate
-                                     differs from the host in "--proxy-pass" URL
-  --debug                            enable nginx debug log output
-  -h, --help                         output this message
+  --listen [ADDRESS:]PORT                   sets the address and port on which the server will accept requests
+  --proxy-pass URL                          sets the url to proxy to
+  --user USER                               sets the name of the authorized user
+  --nginx-user USER                         sets the user to run nginx
+  --location URI                            sets the uri for the location (default: /metrics)
+  --proxy-ssl-ca-file PATH                  specify path to CA file in PEM format used to verify peer certificate,
+                                            implies "proxy_ssl_verify on;"
+  --probe-proxy-pass URL                    sets the probe url to proxy to
+  --probe-listen [ADDRESS:]PORT             sets the address and port on which the server will accept request for probe
+  --proxy-ssl-cert-file PATH                specify path to cert file in PEM format used to authenticate to peer
+  --proxy-ssl-key-file PATH                 specify path to key file in PEM format used to authenticate to peer
+  --proxy-ssl-name NAME                     specify custom CN to use, when verifiying remote certificate,
+                                            this option should only be used CN in the remote certificate
+                                            differs from the host in "--proxy-pass" URL
+  --proxy-bearer-token-from-service-account add header 'Authorization: Bearer ...' with token from pod ServiceAccount 
+  --debug                                   enable nginx debug log output
+  -h, --help                                output this message
 EOF
 )
 
 if ! temp=$(getopt -o h --long "listen:,proxy-pass:,user:,nginx-user:,location:,help,proxy-ssl-ca-file:,
-            proxy-ssl-cert-file:,proxy-ssl-key-file:,proxy-ssl-name:,probe-proxy-pass:,probe-listen:,debug" -n 'run-proxy' -- "$@") ; then
+            proxy-ssl-cert-file:,proxy-ssl-key-file:,proxy-ssl-name:,probe-proxy-pass:,probe-listen:,proxy-bearer-token-from-service-account,debug" -n 'run-proxy' -- "$@") ; then
   >&2 echo
   >&2 echo "$HELP_STRING"
   exit 1
@@ -57,6 +58,8 @@ while true; do
       PROXY_SSL_KEY=$2; shift 2;;
     --proxy-ssl-name )
       PROXY_SSL_NAME=$2; shift 2;;
+    --proxy-bearer-token-from-service-account )
+      PROXY_BEARER_TOKEN_FROM_SA=yes; shift 1;;
     --probe-proxy-pass )
       PROBE_PROXY_PASS=$2; shift 2;;
     --probe-listen )
@@ -158,6 +161,13 @@ EOF
 )"
 fi
 
+if [[ x"$PROXY_BEARER_TOKEN_FROM_SA" = x"yes" ]]; then
+  token="$(cat /run/secrets/kubernetes.io/serviceaccount/token)"
+  PROXY_BEARER_CONFIG="
+      proxy_set_header Authorization \"Bearer $token\";
+"
+fi
+
 if [[ x"$DEBUG" = x"yes" ]]; then
   NGINX_BINARY_NAME=nginx-debug
   ERROR_LOG_LEVEL=debug
@@ -208,6 +218,7 @@ http {
 ${PROXY_SSL_CONFIG}
 ${PROXY_SSL_VERIFY}
 ${PROXY_SSL_NAME}
+${PROXY_BEARER_CONFIG}
     }
   }
   ${PROBE_CONFIG}
